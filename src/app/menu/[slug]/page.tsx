@@ -1723,10 +1723,10 @@ function DetailSheet({
       <button
         onClick={onClose}
         style={{
-          position: 'absolute',
+          position: 'fixed',
           top: '16px',
           right: '16px',
-          zIndex: 50,
+          zIndex: 100,
           width: '36px',
           height: '36px',
           borderRadius: '50%',
