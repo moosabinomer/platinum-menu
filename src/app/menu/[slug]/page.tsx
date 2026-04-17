@@ -15,7 +15,7 @@ async function trackEvent(
   parentItemId?: string | null
 ) {
   try {
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       restaurant_id: restaurantId,
       menu_item_id: menuItemId,
       event_type: eventType,
@@ -1643,14 +1643,14 @@ function DetailSheet({
   restaurant: Restaurant | null;
   theme: ThemeConfig;
 }) {
+  // Track which add-on card is being animated - must be before any early returns
+  const [tappedAddon, setTappedAddon] = useState<string | null>(null);
+
   if (!item) return null;
 
   const kcal = Math.round(
     (item.protein || 0) * 4 + (item.carbs || 0) * 4 + (item.fats || 0) * 9
   );
-
-  // Track which add-on card is being animated
-  const [tappedAddon, setTappedAddon] = useState<string | null>(null);
 
   // Handle both string[] and {name, price}[] formats
   const addOns = Array.isArray(item.add_ons) ? item.add_ons : [];

@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Build insert payload
-    const insertPayload: any = {
+    const insertPayload: Record<string, unknown> = {
       restaurant_id,
       menu_item_id: menu_item_id || null,
       event_type,

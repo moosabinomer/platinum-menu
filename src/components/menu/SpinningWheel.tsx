@@ -23,7 +23,6 @@ export default function SpinningWheel({ items }: SpinningWheelProps) {
 
   const maxOffset = (items.length - 1) * ITEM_H;
   const centerIndex = Math.round(offset / ITEM_H);
-  const currentItem = items[centerIndex];
 
   // Update track transform and item styles
   const updateWheel = useCallback((newOffset: number, snap = false) => {

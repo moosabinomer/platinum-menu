@@ -151,7 +151,6 @@ export default function NewRestaurantPage() {
       }
       
       const uploadData = await uploadResponse.json();
-      const imageUrl = uploadData.publicUrl;
 
       // Extract menu items with AI (pass the uploaded image URL)
       const extractionFormData = new FormData();

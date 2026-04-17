@@ -208,7 +208,7 @@ export default function AnalyticsPage() {
       // Process behavior data
       // Top items by interest (item_detail_open)
       const openCounts: Record<string, { name: string; count: number }> = {};
-      detailOpenEvents?.forEach((event: any) => {
+      detailOpenEvents?.forEach((event: { menu_item_id?: string; menu_items?: { name: string } }) => {
         if (!event.menu_item_id || !event.menu_items) return;
         const id = event.menu_item_id;
         if (!openCounts[id]) {
@@ -223,7 +223,7 @@ export default function AnalyticsPage() {
 
       // Average dwell time per item
       const dwellSums: Record<string, { name: string; totalDwell: number; count: number }> = {};
-      detailCloseEvents?.forEach((event: any) => {
+      detailCloseEvents?.forEach((event: { menu_item_id?: string; menu_items?: { name: string }; dwell_ms?: number }) => {
         if (!event.menu_item_id || !event.menu_items || !event.dwell_ms) return;
         const id = event.menu_item_id;
         if (!dwellSums[id]) {
@@ -243,7 +243,7 @@ export default function AnalyticsPage() {
 
       // Calculate top upsell pairs (parent item + addon)
       const pairCounts: Record<string, { parentItem: string; addonItem: string; pairCount: number }> = {};
-      addonTapEvents?.forEach((event: any) => {
+      addonTapEvents?.forEach((event: { menu_item_id?: string; parent_item_id?: string; menu_items?: { name: string }; parent?: { name: string } }) => {
         if (!event.menu_item_id || !event.parent_item_id || !event.menu_items || !event.parent) return;
         const parentName = event.parent.name;
         const addonName = event.menu_items.name;
@@ -254,13 +254,13 @@ export default function AnalyticsPage() {
         pairCounts[pairKey].pairCount++;
       });
       const topUpsellPairs = Object.entries(pairCounts)
-        .map(([_, pair]) => pair)
+        .map(([, pair]) => pair)
         .sort((a, b) => b.pairCount - a.pairCount)
         .slice(0, 10);
 
       // Calculate returning customers (sessions on 2+ different dates)
       const sessionDates: Record<string, Set<string>> = {};
-      sessionEvents?.forEach((event: any) => {
+      sessionEvents?.forEach((event: { session_id?: string; created_at?: string }) => {
         if (!event.session_id || !event.created_at) return;
         const sessionId = event.session_id;
         const date = event.created_at.split('T')[0];
@@ -277,10 +277,10 @@ export default function AnalyticsPage() {
       });
 
       // Calculate top items and most viewed
-      const itemCounts: Record<string, { name: string; category: string; count: number; addOns?: any[]; price?: number }> = {};
+      const itemCounts: Record<string, { name: string; category: string; count: number; addOns?: unknown[]; price?: number }> = {};
       let totalUpsellValue = 0;
 
-      itemEvents?.forEach((event: any) => {
+      itemEvents?.forEach((event: { menu_item_id?: string; menu_items?: { name: string; category: string; add_ons?: unknown[]; price?: number } }) => {
         if (!event.menu_item_id || !event.menu_items) return;
         
         const itemId = event.menu_item_id;
@@ -299,9 +299,10 @@ export default function AnalyticsPage() {
 
         // Calculate upsell value for this item view
         if (item.add_ons && Array.isArray(item.add_ons) && item.add_ons.length > 0) {
-          const addOnPrices = item.add_ons.map((addon: any) => {
+          const addOnPrices = item.add_ons.map((addon: unknown) => {
             if (typeof addon === 'string') return 0;
-            return addon.price || 0;
+            const addonObj = addon as { price?: number };
+            return addonObj.price || 0;
           });
           const avgAddOnValue = addOnPrices.reduce((a: number, b: number) => a + b, 0) / addOnPrices.length;
           totalUpsellValue += avgAddOnValue;
