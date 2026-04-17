@@ -1721,7 +1721,11 @@ function DetailSheet({
     >
       <div className={`sheet-pill ${isPremiumDark ? 'sheet-pill-premium' : ''}`} />
       <button
-        onClick={onClose}
+        onClick={(e) => {
+          e.stopPropagation();
+          console.log('close button clicked');
+          onClose();
+        }}
         style={{
           position: 'fixed',
           top: '16px',
