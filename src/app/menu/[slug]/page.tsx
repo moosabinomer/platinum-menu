@@ -1705,6 +1705,8 @@ function DetailSheet({
   
   const cardStyles = getCardStyles();
 
+  console.log('DetailSheet render, open:', open);
+
   return (
     <motion.div
       initial={false}
@@ -1719,32 +1721,34 @@ function DetailSheet({
       } as React.CSSProperties}
     >
       <div className={`sheet-pill ${isPremiumDark ? 'sheet-pill-premium' : ''}`} />
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          console.log('close button clicked');
-          onClose();
-        }}
-        style={{
-          position: 'fixed',
-          top: '16px',
-          right: '16px',
-          zIndex: 100,
-          width: '36px',
-          height: '36px',
-          borderRadius: '50%',
-          background: 'rgba(0,0,0,0.6)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          border: '0.5px solid rgba(255,255,255,0.2)',
-          color: '#ffffff',
-          fontSize: '16px',
-        }}
-      >
-        ✕
-      </button>
+      <div style={{ position: 'relative', width: '100%', height: 0 }}>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            console.log('close button clicked');
+            onClose();
+          }}
+          style={{
+            position: 'absolute',
+            top: '16px',
+            right: '16px',
+            zIndex: 50,
+            width: '36px',
+            height: '36px',
+            borderRadius: '50%',
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            border: '0.5px solid rgba(255,255,255,0.2)',
+            color: '#ffffff',
+            fontSize: '16px',
+          }}
+        >
+          ✕
+        </button>
+      </div>
       
       {isPremiumDark && item.image_url && (
         <div className="sheet-hero-premium">
