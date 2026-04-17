@@ -1720,7 +1720,28 @@ function DetailSheet({
       } as React.CSSProperties}
     >
       <div className={`sheet-pill ${isPremiumDark ? 'sheet-pill-premium' : ''}`} />
-      <button className={`sheet-close ${isPremiumDark ? 'sheet-close-premium' : ''}`} onClick={onClose}>✕</button>
+      <button
+        onClick={onClose}
+        style={{
+          position: 'absolute',
+          top: '16px',
+          right: '16px',
+          zIndex: 50,
+          width: '36px',
+          height: '36px',
+          borderRadius: '50%',
+          background: 'rgba(0,0,0,0.6)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          border: '0.5px solid rgba(255,255,255,0.2)',
+          color: '#ffffff',
+          fontSize: '16px',
+        }}
+      >
+        ✕
+      </button>
       
       {isPremiumDark && item.image_url && (
         <div className="sheet-hero-premium">
