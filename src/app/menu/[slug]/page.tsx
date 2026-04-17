@@ -808,7 +808,6 @@ export default function CustomerMenuPage({ params }: { params: { slug: string } 
           border-radius: 24px 24px 0 0;
           z-index: 201;
           transform: translateY(100%);
-          transition: transform 0.35s cubic-bezier(0.32,0.72,0,1);
           max-height: 88vh;
           overflow-y: auto;
         }
@@ -1708,8 +1707,8 @@ function DetailSheet({
 
   return (
     <motion.div
-      initial={{ y: '100%', opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
+      initial={false}
+      animate={open ? { y: 0, opacity: 1 } : { y: '100%', opacity: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       className={`sheet ${open ? 'open' : ''} ${isPremiumDark ? 'sheet-premium' : ''}`}
       style={{
