@@ -66,24 +66,30 @@ export default function RestaurantsPage() {
 
     try {
       const supabase = createClient();
-      
+
       const { error } = await supabase
         .from('restaurants')
         .delete()
         .eq('id', restaurantId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Delete failed:', error);
+        alert('Failed to delete: ' + error.message);
+        return;
+      }
 
       setRestaurants(prev => prev.filter(r => r.id !== restaurantId));
-      toast({ 
-        type: 'success', 
+      toast({
+        type: 'success',
         title: 'Restaurant deleted',
         description: `"${restaurantName}" has been removed.`
       });
     } catch (error) {
       console.error('Error deleting restaurant:', error);
-      toast({ 
-        type: 'error', 
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      alert('Failed to delete: ' + errorMsg);
+      toast({
+        type: 'error',
         title: 'Deletion failed',
         description: 'Please try again or contact support.'
       });

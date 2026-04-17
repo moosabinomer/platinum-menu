@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase-client';
 import Head from 'next/head';
 import { getTheme, ThemeConfig } from '@/lib/themes';
 import { getSessionId } from '@/lib/session';
+import { motion } from 'framer-motion';
 
 // Analytics tracking helper - fails silently
 async function trackEvent(
@@ -1613,13 +1614,17 @@ function CategoryWheel({
           style={{ transform: `translateY(${offset}px)` }}
         >
           {items.map((item, index) => (
-            <div
+            <motion.div
               key={item.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: index * 0.08, ease: 'easeOut' }}
+              whileTap={{ scale: 0.97 }}
               className={`wheel-item ${index === activeIndex ? 'active' : ''} ${isPremiumDark ? 'wheel-item-premium' : ''}`}
             >
               <span className={`wheel-item-name ${isPremiumDark ? 'wheel-item-name-premium' : ''}`}>{item.name}</span>
               <span className={`wheel-item-price ${isPremiumDark ? 'wheel-item-price-premium' : ''}`}>Rs {item.price}</span>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>
@@ -1702,9 +1707,12 @@ function DetailSheet({
   const cardStyles = getCardStyles();
 
   return (
-    <div 
+    <motion.div
+      initial={{ y: '100%', opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       className={`sheet ${open ? 'open' : ''} ${isPremiumDark ? 'sheet-premium' : ''}`}
-      style={{ 
+      style={{
         '--accent': theme.accent,
         '--accent-lo': theme.accentLo || `${theme.accent}1A`,
         '--accent-mid': theme.accentMid || `${theme.accent}38`,
@@ -1777,8 +1785,11 @@ function DetailSheet({
                   menuItem.name.toLowerCase().trim() === addon.name.toLowerCase().trim()
                 );
                 return (
-                <div 
-                  key={idx} 
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: idx * 0.07, ease: 'easeOut' }}
                   className={`upsell-card ${tappedAddon === addon.name ? 'upsell-card-tapped' : ''}`}
                   style={{
                     background: cardStyles.background,
@@ -1795,9 +1806,9 @@ function DetailSheet({
                     setTimeout(() => setTappedAddon(null), 300);
                   }}
                 >
-                  <div 
+                  <div
                     className="upsell-card-image"
-                    style={{ 
+                    style={{
                       backgroundColor: addon.imageUrl ? 'transparent' : cardStyles.placeholderBg,
                     }}
                   >
@@ -1806,28 +1817,28 @@ function DetailSheet({
                     ) : null}
                   </div>
                   <div className="upsell-card-body">
-                    <div 
+                    <div
                       className="upsell-card-name"
                       style={{ color: cardStyles.nameColor }}
                     >
                       {addon.name}
                     </div>
                     {addon.price != null && (
-                      <div 
+                      <div
                         className="upsell-card-price"
                         style={{ color: cardStyles.priceColor }}
                       >
                         Rs {addon.price}
                       </div>
                     )}
-                    <div 
+                    <div
                       className="upsell-card-add"
                       style={{ background: theme.accent }}
                     >
                       +
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
               })}
             </div>
@@ -1838,6 +1849,6 @@ function DetailSheet({
           Please order at the front desk or with your waiter
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
