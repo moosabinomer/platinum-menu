@@ -18,8 +18,7 @@ export default function NewRestaurantPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [menuFile, setMenuFile] = useState<File | null>(null);
-  const [menuPreview, setMenuPreview] = useState<string | null>(null);
+  const [menuFiles, setMenuFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     name: '',
@@ -36,35 +35,28 @@ export default function NewRestaurantPage() {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Validate file type
+    const files = Array.from(e.target.files || []);
+    
+    // Filter valid image files under 10MB
+    const validFiles = files.filter(file => {
       if (!file.type.startsWith('image/')) {
-        setErrors((prev) => ({ ...prev, menuFile: 'Please upload an image file (PNG/JPG/WEBP)' }));
-        toast({ type: 'error', title: 'Invalid file type', description: 'Only image files are supported.' });
-        return;
+        toast({ type: 'error', title: 'Invalid file type', description: `${file.name} is not an image.` });
+        return false;
       }
-      
-      // Validate file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
-        setErrors((prev) => ({ ...prev, menuFile: 'File size must be less than 10MB' }));
-        toast({ type: 'error', title: 'File too large', description: 'Please upload an image under 10MB.' });
-        return;
+        toast({ type: 'error', title: 'File too large', description: `${file.name} is over 10MB.` });
+        return false;
       }
+      return true;
+    });
 
-      setMenuFile(file);
+    if (validFiles.length > 0) {
+      setMenuFiles(validFiles);
       setErrors((prev) => {
         const next = { ...prev };
         delete next.menuFile;
         return next;
       });
-      
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setMenuPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
     }
   };
 
@@ -72,7 +64,7 @@ export default function NewRestaurantPage() {
     const nextErrors: Record<string, string> = {};
     if (!formData.name.trim()) nextErrors.name = 'Restaurant name is required';
     if (!formData.contact.trim()) nextErrors.contact = 'Contact information is required';
-    if (!menuFile) nextErrors.menuFile = 'Menu image is required';
+    if (menuFiles.length === 0) nextErrors.menuFile = 'Menu image is required';
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
@@ -80,7 +72,7 @@ export default function NewRestaurantPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
-    if (!menuFile) return;
+    if (menuFiles.length === 0) return;
 
     setLoading(true);
     console.log('=== STARTING RESTAURANT CREATION ===');
@@ -111,7 +103,7 @@ export default function NewRestaurantPage() {
       // Extract theme colors from menu image
       let themeColors: string[] | null = null;
       try {
-        themeColors = await extractThemeColors(menuFile);
+        themeColors = await extractThemeColors(menuFiles[0]);
         console.log('Extracted theme colors:', themeColors);
       } catch (colorError) {
         console.warn('Failed to extract theme colors:', colorError);
@@ -135,10 +127,10 @@ export default function NewRestaurantPage() {
       if (restaurantError) throw restaurantError;
       if (!restaurant) throw new Error('Failed to create restaurant');
 
-      // Upload menu image to Supabase Storage using server-side API
+      // Upload first menu image to Supabase Storage using server-side API
       const uploadFormData = new FormData();
-      uploadFormData.append('file', menuFile);
-      uploadFormData.append('path', `${restaurant.id}-menu.${menuFile.name.split('.').pop()}`);
+      uploadFormData.append('file', menuFiles[0]);
+      uploadFormData.append('path', `${restaurant.id}-menu.${menuFiles[0].name.split('.').pop()}`);
       
       const uploadResponse = await fetch('/api/upload-file', {
         method: 'POST',
@@ -152,9 +144,12 @@ export default function NewRestaurantPage() {
       
       const uploadData = await uploadResponse.json();
 
-      // Extract menu items with AI (pass the uploaded image URL)
+      // Extract menu items with AI (pass all uploaded images)
       const extractionFormData = new FormData();
-      extractionFormData.append('menu', menuFile);
+      menuFiles.forEach((file, i) => {
+        extractionFormData.append(`menu_${i}`, file);
+      });
+      extractionFormData.append('menu_count', String(menuFiles.length));
       const extractionResponse = await fetch('/api/extract-menu', {
         method: 'POST',
         body: extractionFormData,
@@ -296,21 +291,32 @@ export default function NewRestaurantPage() {
               </label>
               <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-stone-300 border-dashed rounded-lg hover:border-amber-500 transition-colors">
                 <div className="space-y-1 text-center">
-                  {menuPreview ? (
+                  {menuFiles.length > 0 ? (
                     <div className="space-y-4">
-                      <img
-                        src={menuPreview}
-                        alt="Menu preview"
-                        className="mx-auto max-h-64 rounded-lg shadow-md"
-                      />
+                      <p className="text-sm text-stone-600">
+                        {menuFiles.length} page{menuFiles.length > 1 ? 's' : ''} selected
+                      </p>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                        {menuFiles.map((file, i) => (
+                          <div key={i} style={{ position: 'relative' }}>
+                            <img
+                              src={URL.createObjectURL(file)}
+                              style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px' }}
+                              alt={`Page ${i + 1}`}
+                            />
+                            <span style={{ position: 'absolute', bottom: '4px', left: '4px', fontSize: '10px', background: 'rgba(0,0,0,0.6)', color: 'white', padding: '1px 4px', borderRadius: '4px' }}>
+                              p.{i + 1}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                       <div className="flex justify-center space-x-3">
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setMenuFile(null);
-                            setMenuPreview(null);
+                            setMenuFiles([]);
                           }}
                         >
                           Remove
@@ -322,11 +328,12 @@ export default function NewRestaurantPage() {
                       <Upload className="mx-auto h-12 w-12 text-stone-400" />
                       <div className="flex text-sm text-stone-600 justify-center">
                         <label className="relative cursor-pointer rounded-md font-medium text-amber-600 hover:text-amber-500">
-                          <span>Upload a file</span>
+                          <span>Upload files</span>
                           <input
                             type="file"
                             className="sr-only"
                             accept="image/png,image/jpeg,image/jpg,image/webp"
+                            multiple
                             onChange={handleFileChange}
                             disabled={loading}
                           />
@@ -334,7 +341,7 @@ export default function NewRestaurantPage() {
                         <p className="pl-1">or drag and drop</p>
                       </div>
                       <p className="text-xs text-stone-500">
-                        PNG, JPG, WEBP up to 10MB
+                        PNG, JPG, WEBP up to 10MB — select multiple pages
                       </p>
                     </>
                   )}
@@ -357,7 +364,7 @@ export default function NewRestaurantPage() {
                 type="submit"
                 variant="primary"
                 size="lg"
-                disabled={loading || !formData.name || !formData.contact || !menuFile}
+                disabled={loading || !formData.name || !formData.contact || menuFiles.length === 0}
               >
                 {loading ? (
                   <>
