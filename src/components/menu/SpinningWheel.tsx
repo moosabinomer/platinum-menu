@@ -1,7 +1,22 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { MenuItem } from '@/types';
+
+const containerVariants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.08
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] as const } }
+};
 
 interface SpinningWheelProps {
   items: MenuItem[];
@@ -185,40 +200,48 @@ export default function SpinningWheel({ items }: SpinningWheelProps) {
           <div style={{ height: PAD_HEIGHT }} />
 
           {/* Items */}
-          {items.map((item, index) => (
-            <div
-              key={item.id}
-              className="flex items-center px-8 relative transition-opacity duration-150"
-              style={getItemStyle(index)}
-              onClick={() => index === centerIndex && handleItemClick(item)}
-            >
-              <span 
-                className={`font-medium truncate flex-1 transition-all duration-200 ${
-                  index === centerIndex 
-                    ? 'text-white text-lg font-semibold' 
-                    : 'text-white/50 text-base'
-                }`}
-                style={{ 
-                  letterSpacing: '-0.1px',
-                  maxWidth: 'calc(100% - 80px)',
-                }}
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            {items.map((item, index) => (
+              <motion.div
+                key={item.id}
+                variants={itemVariants}
+                whileTap={{ scale: 0.97 }}
+                className="flex items-center px-8 relative transition-opacity duration-150"
+                style={getItemStyle(index)}
+                onClick={() => index === centerIndex && handleItemClick(item)}
               >
-                {item.name}
-              </span>
-              <span 
-                className={`ml-auto flex-shrink-0 font-normal transition-all duration-200 ${
-                  index === centerIndex 
-                    ? 'text-sm font-medium' 
-                    : 'text-sm text-white/30'
-                }`}
-                style={{
-                  color: index === centerIndex ? 'var(--accent, #C8473A)' : undefined,
-                }}
-              >
-                {item.price ? `Rs ${item.price}` : ''}
-              </span>
-            </div>
-          ))}
+                <span
+                  className={`font-medium truncate flex-1 transition-all duration-200 ${
+                    index === centerIndex
+                      ? 'text-white text-lg font-semibold'
+                      : 'text-white/50 text-base'
+                  }`}
+                  style={{
+                    letterSpacing: '-0.1px',
+                    maxWidth: 'calc(100% - 80px)',
+                  }}
+                >
+                  {item.name}
+                </span>
+                <span
+                  className={`ml-auto flex-shrink-0 font-normal transition-all duration-200 ${
+                    index === centerIndex
+                      ? 'text-sm font-medium'
+                      : 'text-sm text-white/30'
+                  }`}
+                  style={{
+                    color: index === centerIndex ? 'var(--accent, #C8473A)' : undefined,
+                  }}
+                >
+                  {item.price ? `Rs ${item.price}` : ''}
+                </span>
+              </motion.div>
+            ))}
+          </motion.div>
 
           {/* Padding after */}
           <div style={{ height: PAD_HEIGHT }} />

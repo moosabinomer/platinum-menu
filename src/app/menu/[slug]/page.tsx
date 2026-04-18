@@ -1656,6 +1656,21 @@ function DetailSheet({
     (item.protein || 0) * 4 + (item.carbs || 0) * 4 + (item.fats || 0) * 9
   );
 
+  // Add-on animation variants
+  const addonContainerVariants = {
+    hidden: {},
+    visible: {
+      transition: {
+        staggerChildren: 0.07
+      }
+    }
+  };
+
+  const addonItemVariants = {
+    hidden: { opacity: 0, x: 20 },
+    visible: { opacity: 1, x: 0, transition: { duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] as const } }
+  };
+
   // Handle both string[] and {name, price}[] formats
   const addOns = Array.isArray(item.add_ons) ? item.add_ons : [];
   
@@ -1806,7 +1821,12 @@ function DetailSheet({
               </div>
               <div className="upsell-hint">Swipe to explore</div>
             </div>
-            <div className="upsell-scroll">
+            <motion.div
+              className="upsell-scroll"
+              variants={addonContainerVariants}
+              initial="hidden"
+              animate="visible"
+            >
               {addOnsWithImages.map((addon, idx) => {
                 // Find the addon item ID for tracking
                 const addonItem = allMenuItems.find(menuItem =>
@@ -1815,9 +1835,7 @@ function DetailSheet({
                 return (
                 <motion.div
                   key={idx}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.3, delay: idx * 0.07, ease: 'easeOut' }}
+                  variants={addonItemVariants}
                   className={`upsell-card ${tappedAddon === addon.name ? 'upsell-card-tapped' : ''}`}
                   style={{
                     background: cardStyles.background,
@@ -1869,7 +1887,7 @@ function DetailSheet({
                 </motion.div>
               );
               })}
-            </div>
+            </motion.div>
           </div>
         )}
         
