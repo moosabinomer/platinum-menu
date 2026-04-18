@@ -43,13 +43,22 @@ export default function EnhanceRestaurantPage() {
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
   const [enhancedImages, setEnhancedImages] = useState<Record<string, string>>({});
-  
+
   // Bulk enhancement state
   const [bulkEnhancing, setBulkEnhancing] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
   const [bulkFailedItems, setBulkFailedItems] = useState<MenuItem[]>([]);
   const [bulkComplete, setBulkComplete] = useState(false);
   const [restaurantSlug, setRestaurantSlug] = useState<string>('');
+
+  // Bulk image upload state
+  const [bulkImages, setBulkImages] = useState<File[]>([]);
+  const [unmatchedImages, setUnmatchedImages] = useState<File[]>([]);
+  const [matchedPairs, setMatchedPairs] = useState<{ item: MenuItem; file: File }[]>([]);
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkUploadProgress, setBulkUploadProgress] = useState(0);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [assigningImage, setAssigningImage] = useState<File | null>(null);
 
   const fetchRestaurantData = useCallback(async () => {
     try {
@@ -543,6 +552,102 @@ export default function EnhanceRestaurantPage() {
     }
   };
 
+  // Filename matching function for bulk image upload
+  const matchImageToItem = (file: File, items: MenuItem[]): MenuItem | null => {
+    const filename = file.name
+      .toLowerCase()
+      .replace(/\.[^/.]+$/, '')        // remove extension
+      .replace(/[-_]/g, ' ')           // replace dashes/underscores with spaces
+      .trim();
+
+    // Exact match first
+    let match = items.find(item =>
+      item.name.toLowerCase().trim() === filename
+    );
+    if (match) return match;
+
+    // Partial match — filename contains item name or vice versa
+    match = items.find(item => {
+      const itemName = item.name.toLowerCase().trim();
+      return filename.includes(itemName) || itemName.includes(filename);
+    });
+    if (match) return match;
+
+    // Word overlap match — at least 2 words in common
+    const filenameWords = filename.split(' ').filter(w => w.length > 2);
+    match = items.find(item => {
+      const itemWords = item.name.toLowerCase().split(' ').filter(w => w.length > 2);
+      const overlap = filenameWords.filter(w => itemWords.includes(w));
+      return overlap.length >= 2;
+    });
+
+    return match || null;
+  };
+
+  // Bulk image selection handler
+  const handleBulkImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const matched: { item: MenuItem; file: File }[] = [];
+    const unmatched: File[] = [];
+
+    files.forEach(file => {
+      const matchedItem = matchImageToItem(file, menuItems);
+      if (matchedItem) {
+        // Don't match same item twice — first match wins
+        const alreadyMatched = matched.find(m => m.item.id === matchedItem.id);
+        if (!alreadyMatched) {
+          matched.push({ item: matchedItem, file });
+        } else {
+          unmatched.push(file);
+        }
+      } else {
+        unmatched.push(file);
+      }
+    });
+
+    setMatchedPairs(matched);
+    setUnmatchedImages(unmatched);
+    setBulkImages(files);
+    setShowBulkModal(true);
+  };
+
+  // Bulk upload handler
+  const handleBulkUpload = async () => {
+    if (matchedPairs.length === 0) return;
+    setBulkUploading(true);
+    setBulkUploadProgress(0);
+
+    for (let i = 0; i < matchedPairs.length; i++) {
+      const { item, file } = matchedPairs[i];
+      await handleImageUpload(item.id, file, false);
+      setBulkUploadProgress(Math.round(((i + 1) / matchedPairs.length) * 100));
+    }
+
+    setBulkUploading(false);
+    setShowBulkModal(false);
+    setMatchedPairs([]);
+    setUnmatchedImages([]);
+    setBulkImages([]);
+  };
+
+  // Manual assignment handler
+  const handleManualAssign = (file: File, item: MenuItem) => {
+    // Move from unmatched to matched
+    setUnmatchedImages(prev => prev.filter(f => f.name !== file.name));
+    setMatchedPairs(prev => {
+      // If item already has a match, replace it and put old file back in unmatched
+      const existing = prev.find(m => m.item.id === item.id);
+      if (existing) {
+        setUnmatchedImages(u => [...u, existing.file]);
+        return prev.map(m => m.item.id === item.id ? { item, file } : m);
+      }
+      return [...prev, { item, file }];
+    });
+    setAssigningImage(null);
+  };
+
   const toggleExpand = (itemId: string) => {
     setExpandedItems(prev => {
       const next = new Set(prev);
@@ -629,6 +734,34 @@ export default function EnhanceRestaurantPage() {
                 <Sparkles className="h-4 w-4 mr-2" />
                 Enhance All Unapproved Items ({menuItems.filter(i => !i.approved).length})
               </Button>
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleBulkImageSelect}
+                  style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                  id="bulk-image-input"
+                />
+                <button
+                  style={{
+                    padding: '8px 16px',
+                    background: '#1a1a2e',
+                    color: '#a78bfa',
+                    border: '1px solid #a78bfa',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <span style={{ fontSize: '16px' }}>⬆</span>
+                  Bulk Upload Images
+                </button>
+              </div>
               <Button
                 onClick={handlePublishAll}
                 className="flex-1"
@@ -1091,6 +1224,141 @@ export default function EnhanceRestaurantPage() {
           Continue to Publish →
         </Button>
       </div>
+
+      {/* Bulk Upload Modal */}
+      {showBulkModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)',
+          zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            background: '#111', border: '1px solid #2a2a2a', borderRadius: '16px',
+            width: '100%', maxWidth: '680px', maxHeight: '85vh', overflow: 'auto',
+            padding: '24px'
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div>
+                <h2 style={{ color: '#fff', fontSize: '18px', fontWeight: '700', margin: 0 }}>Bulk Image Upload</h2>
+                <p style={{ color: '#666', fontSize: '13px', margin: '4px 0 0' }}>
+                  {matchedPairs.length} matched · {unmatchedImages.length} need manual assignment
+                </p>
+              </div>
+              <button onClick={() => setShowBulkModal(false)} style={{ background: 'none', border: 'none', color: '#666', fontSize: '20px', cursor: 'pointer' }}>×</button>
+            </div>
+
+            {/* Matched section */}
+            {matchedPairs.length > 0 && (
+              <div style={{ marginBottom: '20px' }}>
+                <p style={{ color: '#22c55e', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+                  Auto-Matched ({matchedPairs.length})
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {matchedPairs.map(({ item, file }) => (
+                    <div key={item.id} style={{
+                      display: 'flex', alignItems: 'center', gap: '12px',
+                      background: '#1a2a1a', border: '1px solid #2a3a2a',
+                      borderRadius: '10px', padding: '10px 12px'
+                    }}>
+                      <img
+                        src={URL.createObjectURL(file)}
+                        style={{ width: '48px', height: '48px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }}
+                        alt={file.name}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ color: '#fff', fontSize: '13px', fontWeight: '600', margin: 0 }}>{item.name}</p>
+                        <p style={{ color: '#666', fontSize: '11px', margin: '2px 0 0' }}>{file.name}</p>
+                      </div>
+                      <span style={{ color: '#22c55e', fontSize: '18px' }}>✓</span>
+                      <button
+                        onClick={() => {
+                          setMatchedPairs(prev => prev.filter(m => m.item.id !== item.id));
+                          setUnmatchedImages(prev => [...prev, file]);
+                        }}
+                        style={{ background: 'none', border: 'none', color: '#666', fontSize: '12px', cursor: 'pointer' }}
+                      >
+                        Unmatch
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Unmatched section */}
+            {unmatchedImages.length > 0 && (
+              <div style={{ marginBottom: '20px' }}>
+                <p style={{ color: '#f59e0b', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+                  Needs Assignment ({unmatchedImages.length})
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {unmatchedImages.map((file) => (
+                    <div key={file.name} style={{
+                      display: 'flex', alignItems: 'center', gap: '12px',
+                      background: '#2a1a0a', border: '1px solid #3a2a1a',
+                      borderRadius: '10px', padding: '10px 12px'
+                    }}>
+                      <img
+                        src={URL.createObjectURL(file)}
+                        style={{ width: '48px', height: '48px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }}
+                        alt={file.name}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ color: '#fff', fontSize: '13px', fontWeight: '600', margin: 0 }}>{file.name}</p>
+                        <p style={{ color: '#f59e0b', fontSize: '11px', margin: '2px 0 0' }}>No match found</p>
+                      </div>
+                      {/* Dropdown to manually assign */}
+                      <select
+                        onChange={(e) => {
+                          const item = menuItems.find(m => m.id === e.target.value);
+                          if (item) handleManualAssign(file, item);
+                        }}
+                        defaultValue=""
+                        style={{
+                          background: '#1a1a1a', color: '#fff', border: '1px solid #3a3a3a',
+                          borderRadius: '6px', padding: '4px 8px', fontSize: '12px', cursor: 'pointer'
+                        }}
+                      >
+                        <option value="" disabled>Assign to item...</option>
+                        {menuItems.map(item => (
+                          <option key={item.id} value={item.id}>{item.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Upload button */}
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '16px', borderTop: '1px solid #2a2a2a', paddingTop: '16px' }}>
+              <button
+                onClick={() => setShowBulkModal(false)}
+                style={{ padding: '8px 16px', background: 'none', border: '1px solid #3a3a3a', color: '#888', borderRadius: '8px', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkUpload}
+                disabled={matchedPairs.length === 0 || bulkUploading}
+                style={{
+                  padding: '8px 20px',
+                  background: matchedPairs.length === 0 ? '#2a2a2a' : '#a78bfa',
+                  color: matchedPairs.length === 0 ? '#555' : '#fff',
+                  border: 'none', borderRadius: '8px', cursor: matchedPairs.length === 0 ? 'not-allowed' : 'pointer',
+                  fontWeight: '600', fontSize: '14px'
+                }}
+              >
+                {bulkUploading
+                  ? `Uploading... ${bulkUploadProgress}%`
+                  : `Upload ${matchedPairs.length} Image${matchedPairs.length !== 1 ? 's' : ''}`
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
