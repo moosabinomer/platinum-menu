@@ -1822,6 +1822,7 @@ function DetailSheet({
               <div className="upsell-hint">Swipe to explore</div>
             </div>
             <motion.div
+              key={item?.id}
               className="upsell-scroll"
               variants={addonContainerVariants}
               initial="hidden"
