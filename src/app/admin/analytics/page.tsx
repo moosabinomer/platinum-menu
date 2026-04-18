@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { BarChart, TrendingUp, Eye, Package, DollarSign, Users, Download } from 'lucide-react';
+import { BarChart, TrendingUp, Eye, Package, DollarSign, Users, Download, FileText } from 'lucide-react';
+import { jsPDF } from 'jspdf';
 
 interface Restaurant {
   id: string;
@@ -334,6 +335,207 @@ export default function AnalyticsPage() {
 
     fetchAnalytics();
   }, [selectedRestaurant, dateRange]);
+
+  const handleDownloadReport = () => {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W = 210;
+    const H = 297;
+    let y = 0;
+
+    const selectedRestaurantName = restaurants.find(r => r.id === selectedRestaurant)?.name || 'Restaurant';
+
+    // --- BACKGROUND ---
+    doc.setFillColor(10, 10, 10);
+    doc.rect(0, 0, W, H, 'F');
+
+    // --- TOP GOLD BAR ---
+    doc.setFillColor(201, 168, 76);
+    doc.rect(0, 0, W, 2, 'F');
+
+    // --- HEADER ---
+    doc.setTextColor(201, 168, 76);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PLATINUM MENU', 18, 20);
+
+    doc.setTextColor(136, 136, 128);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('MONTHLY ANALYTICS REPORT', 18, 27);
+
+    // Restaurant name
+    doc.setTextColor(245, 245, 240);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(selectedRestaurantName.toUpperCase(), 18, 38);
+
+    // Date range
+    const now = new Date();
+    const monthYear = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+    doc.setTextColor(136, 136, 128);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Report Period: ${monthYear}`, 18, 44);
+
+    // Divider
+    doc.setDrawColor(201, 168, 76);
+    doc.setLineWidth(0.3);
+    doc.line(18, 48, W - 18, 48);
+
+    y = 56;
+
+    // --- SECTION: OVERVIEW METRICS ---
+    doc.setTextColor(201, 168, 76);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text('OVERVIEW', 18, y);
+    y += 6;
+
+    const metrics = [
+      { label: 'Total Menu Views', value: String(data.menuViews) },
+      { label: 'Total Item Views', value: String(data.itemViews) },
+      { label: 'Most Viewed Item', value: data.mostViewedItem?.name || 'N/A' },
+      { label: 'Upsell Exposure', value: String(data.itemViews) },
+      { label: 'Contacts Collected', value: String(data.contactsCollected) },
+      { label: 'Returning Customers', value: String(behavior.returningCustomers) },
+    ];
+
+    const cardW = (W - 36 - 10) / 3;
+    metrics.forEach((m, i) => {
+      const col = i % 3;
+      const row = Math.floor(i / 3);
+      const x = 18 + col * (cardW + 5);
+      const cy = y + row * 20;
+
+      doc.setFillColor(30, 30, 30);
+      doc.roundedRect(x, cy, cardW, 16, 2, 2, 'F');
+
+      doc.setTextColor(136, 136, 128);
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'normal');
+      doc.text(m.label.toUpperCase(), x + 3, cy + 5);
+
+      doc.setTextColor(245, 245, 240);
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text(m.value, x + 3, cy + 12);
+    });
+
+    y += 46;
+
+    // --- SECTION: TOP ITEMS ---
+    doc.setTextColor(201, 168, 76);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TOP ITEMS BY VIEWS', 18, y);
+    doc.setDrawColor(201, 168, 76);
+    doc.setLineWidth(0.3);
+    doc.line(18, y + 2, W - 18, y + 2);
+    y += 7;
+
+    // Table header
+    doc.setFillColor(20, 20, 20);
+    doc.rect(18, y, W - 36, 7, 'F');
+    doc.setTextColor(136, 136, 128);
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ITEM', 21, y + 5);
+    doc.text('CATEGORY', 100, y + 5);
+    doc.text('VIEWS', 150, y + 5);
+    doc.text('ADD-ONS SHOWN', 170, y + 5);
+    y += 7;
+
+    data.topItems.slice(0, 8).forEach((item, i) => {
+      if (i % 2 === 0) {
+        doc.setFillColor(26, 26, 26);
+        doc.rect(18, y, W - 36, 6, 'F');
+      }
+      doc.setTextColor(245, 245, 240);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.text(item.name?.substring(0, 30) || '', 21, y + 4.5);
+      doc.setTextColor(136, 136, 128);
+      doc.text(item.category?.substring(0, 20) || '', 100, y + 4.5);
+      doc.setTextColor(245, 245, 240);
+      doc.text(String(item.views || 0), 153, y + 4.5);
+      doc.text(String(item.views || 0), 178, y + 4.5);
+      y += 6;
+    });
+
+    y += 6;
+
+    // --- SECTION: CUSTOMER BEHAVIOR ---
+    doc.setTextColor(201, 168, 76);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text('CUSTOMER BEHAVIOR INSIGHTS', 18, y);
+    doc.setDrawColor(201, 168, 76);
+    doc.setLineWidth(0.3);
+    doc.line(18, y + 2, W - 18, y + 2);
+    y += 7;
+
+    // Top items by interest
+    doc.setTextColor(245, 245, 240);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Most Opened Items', 18, y);
+    y += 5;
+
+    behavior.topItemsByInterest.slice(0, 5).forEach((item, i) => {
+      doc.setFillColor(i % 2 === 0 ? 26 : 20, i % 2 === 0 ? 26 : 20, i % 2 === 0 ? 26 : 20);
+      doc.rect(18, y, W - 36, 6, 'F');
+      doc.setTextColor(245, 245, 240);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.text(item.name?.substring(0, 40) || '', 21, y + 4.5);
+      doc.setTextColor(201, 168, 76);
+      doc.text(String(item.openCount || 0) + ' opens', 165, y + 4.5);
+      y += 6;
+    });
+
+    y += 4;
+
+    // Top upsell pairs
+    doc.setTextColor(245, 245, 240);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Top Upsell Pairs', 18, y);
+    y += 5;
+
+    behavior.topUpsellPairs.slice(0, 5).forEach((pair, i) => {
+      doc.setFillColor(i % 2 === 0 ? 26 : 20, i % 2 === 0 ? 26 : 20, i % 2 === 0 ? 26 : 20);
+      doc.rect(18, y, W - 36, 6, 'F');
+      doc.setTextColor(245, 245, 240);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.text((pair.parentItem || '').substring(0, 25), 21, y + 4.5);
+      doc.setTextColor(136, 136, 128);
+      doc.text('+ ' + (pair.addonItem || '').substring(0, 25), 90, y + 4.5);
+      doc.setTextColor(201, 168, 76);
+      doc.text(String(pair.pairCount || 0) + 'x', 175, y + 4.5);
+      y += 6;
+    });
+
+    y += 8;
+
+    // --- FOOTER ---
+    doc.setDrawColor(42, 42, 42);
+    doc.setLineWidth(0.3);
+    doc.line(18, H - 18, W - 18, H - 18);
+
+    doc.setTextColor(136, 136, 128);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.text('platinumhealthpk@gmail.com', 18, H - 12);
+    doc.text('+92 307 4769938', W - 18, H - 12, { align: 'right' });
+
+    doc.setFillColor(201, 168, 76);
+    doc.rect(0, H - 2, W, 2, 'F');
+
+    // Save
+    const filename = `${selectedRestaurantName.toLowerCase().replace(/\s+/g, '-')}-analytics-${monthYear.replace(' ', '-')}.pdf`;
+    doc.save(filename);
+  };
 
   if (loading) {
     return (
@@ -736,6 +938,14 @@ export default function AnalyticsPage() {
           >
             <Download className="h-4 w-4" />
             Export CSV
+          </button>
+          <button
+            onClick={handleDownloadReport}
+            disabled={!selectedRestaurant || data.menuViews === 0}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-stone-900 text-amber-400 rounded-lg text-sm font-medium hover:bg-stone-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-amber-500/30"
+          >
+            <FileText className="h-4 w-4" />
+            Download Monthly Report
           </button>
         </CardHeader>
         <CardContent>

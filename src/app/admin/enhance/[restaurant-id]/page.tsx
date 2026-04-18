@@ -632,7 +632,7 @@ export default function EnhanceRestaurantPage() {
               <Button
                 onClick={handlePublishAll}
                 className="flex-1"
-                style={{ backgroundColor: '#22c55e', color: 'white', border: 'none' }}
+                style={{ backgroundColor: '#16a34a', color: 'white', border: 'none' }}
               >
                 <CheckCircle className="h-4 w-4 mr-2" />
                 Publish All
