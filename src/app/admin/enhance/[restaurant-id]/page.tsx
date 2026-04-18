@@ -494,36 +494,33 @@ export default function EnhanceRestaurantPage() {
       return;
     }
 
-    // All succeeded - batch approve all items and publish restaurant
+    // All succeeded - show success message
+    toast({ 
+      type: 'success', 
+      title: 'All items enhanced successfully', 
+      description: 'Review and publish when ready.',
+    });
+  };
+
+  const handlePublishAll = async () => {
     try {
       const supabase: any = createClient();
 
-      // Update all enhanced items to approved in a batch
-      const itemUpdates = enhanced.map(item => ({
-        id: item.id,
-        description: item.description,
-        protein: item.protein,
-        carbs: item.carbs,
-        fats: item.fats,
-        add_ons: item.add_ons,
-        approved: true,
-      }));
+      // Batch approve all menu items for this restaurant
+      const { data: items }: any = await supabase
+        .from('menu_items')
+        .select('id')
+        .eq('restaurant_id', restaurantId);
 
-      // Use upsert or individual updates since Supabase doesn't support batch update well
-      for (const update of itemUpdates) {
-        const { error } = await supabase
-          .from('menu_items')
-          .update({
-            description: update.description,
-            protein: update.protein,
-            carbs: update.carbs,
-            fats: update.fats,
-            add_ons: update.add_ons,
-            approved: true,
-          })
-          .eq('id', update.id);
-        
-        if (error) throw error;
+      if (items) {
+        for (const item of items) {
+          const { error } = await supabase
+            .from('menu_items')
+            .update({ approved: true })
+            .eq('id', item.id);
+          
+          if (error) throw error;
+        }
       }
 
       // Publish restaurant
@@ -532,21 +529,17 @@ export default function EnhanceRestaurantPage() {
         .update({ published: true })
         .eq('id', restaurantId);
 
-      if (publishError) throw publishError;
+      if (publishError) {
+        console.error('Publish error details:', publishError);
+        throw new Error(publishError.message);
+      }
 
-      // Update local state to reflect approvals
-      setMenuItems(prev => prev.map(item => ({ ...item, approved: true })));
-      setBulkComplete(true);
-
-      toast({ 
-        type: 'success', 
-        title: 'All items enhanced & published!', 
-        description: `${enhanced.length} items approved and restaurant is now live.`,
-      });
-
-    } catch (error) {
-      console.error('Error publishing:', error);
-      toast({ type: 'error', title: 'Publish failed', description: 'Items enhanced but failed to publish. Try manual publish.' });
+      toast({ type: 'success', title: 'Menu published successfully!' });
+      // Redirect to publish page
+      router.push(`/admin/publish/${restaurantId}`);
+    } catch (error: any) {
+      console.error('Publish error:', error);
+      toast({ type: 'error', title: 'Publish failed', description: error.message || 'Please try again' });
     }
   };
 
@@ -626,15 +619,25 @@ export default function EnhanceRestaurantPage() {
           
           {/* Bulk Enhancement UI */}
           {!bulkEnhancing && !bulkComplete && bulkFailedItems.length === 0 && (
-            <Button
-              onClick={handleEnhanceAll}
-              disabled={menuItems.filter(i => !i.approved).length === 0}
-              className="w-full"
-              variant="outline"
-            >
-              <Sparkles className="h-4 w-4 mr-2" />
-              Enhance All Unapproved Items ({menuItems.filter(i => !i.approved).length})
-            </Button>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <Button
+                onClick={handleEnhanceAll}
+                disabled={menuItems.filter(i => !i.approved).length === 0}
+                className="flex-1"
+                variant="outline"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Enhance All Unapproved Items ({menuItems.filter(i => !i.approved).length})
+              </Button>
+              <Button
+                onClick={handlePublishAll}
+                className="flex-1"
+                style={{ backgroundColor: '#22c55e', color: 'white', border: 'none' }}
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Publish All
+              </Button>
+            </div>
           )}
           
           {/* Progress Indicator */}
