@@ -144,7 +144,7 @@ export default function AnalyticsPage() {
       // Fetch item view details with names
       let itemDetailsQuery = supabase
         .from('analytics_events')
-        .select('menu_item_id, menu_items(name, category, add_ons, price)')
+        .select('menu_item_id, menu_items!menu_item_id(name, category, add_ons, price)')
         .eq('restaurant_id', selectedRestaurant)
         .eq('event_type', 'item_view');
 
