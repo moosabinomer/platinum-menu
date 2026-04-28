@@ -96,7 +96,6 @@ export default function AnalyticsPage() {
 
   // Fetch analytics when selection changes
   useEffect(() => {
-    console.log('fetch triggered, restaurant:', selectedRestaurant);
     if (!selectedRestaurant) return;
 
     const fetchAnalytics = async () => {
@@ -173,23 +172,21 @@ export default function AnalyticsPage() {
       // Fetch behavior insights - item detail open events
       let itemDetailOpenQuery = supabase
         .from('analytics_events')
-        .select('menu_item_id, menu_items(name)')
+        .select('menu_item_id, menu_items!menu_item_id(name)')
         .eq('restaurant_id', selectedRestaurant)
         .eq('event_type', 'item_detail_open');
       if (startDate) itemDetailOpenQuery = itemDetailOpenQuery.gte('created_at', startDate);
-      const { data: detailOpenEvents, error: openError } = await itemDetailOpenQuery;
-      console.log('[Analytics Debug] item_detail_open query:', { selectedRestaurant, detailOpenEvents, openError });
+      const { data: detailOpenEvents } = await itemDetailOpenQuery;
 
       // Fetch item detail close events with dwell time
       let itemDetailCloseQuery = supabase
         .from('analytics_events')
-        .select('menu_item_id, menu_items(name), dwell_ms')
+        .select('menu_item_id, menu_items!menu_item_id(name), dwell_ms')
         .eq('restaurant_id', selectedRestaurant)
         .eq('event_type', 'item_detail_close')
         .gt('dwell_ms', 5000); // Filter > 5 seconds
       if (startDate) itemDetailCloseQuery = itemDetailCloseQuery.gte('created_at', startDate);
-      const { data: detailCloseEvents, error: closeError } = await itemDetailCloseQuery;
-      console.log('[Analytics Debug] item_detail_close query:', { detailCloseEvents, closeError });
+      const { data: detailCloseEvents } = await itemDetailCloseQuery;
 
       // Fetch addon tap events with parent item context
       let addonTapQuery = supabase
@@ -224,7 +221,6 @@ export default function AnalyticsPage() {
         .map(([id, item]) => ({ id, name: item.name, openCount: item.count }))
         .sort((a, b) => b.openCount - a.openCount)
         .slice(0, 10);
-      console.log('[Analytics Debug] topItemsByInterest:', topItemsByInterest);
 
       // Average dwell time per item
       const dwellSums: Record<string, { name: string; totalDwell: number; count: number }> = {};
