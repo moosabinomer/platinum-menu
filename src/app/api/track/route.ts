@@ -38,8 +38,10 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error('Analytics tracking error:', error);
-      // Return 200 anyway to not break the menu experience
-      return NextResponse.json({ success: false, error: error.message }, { status: 200 });
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ success: true }, { status: 200 });

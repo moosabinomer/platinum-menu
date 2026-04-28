@@ -352,10 +352,10 @@ export default function CustomerMenuPage({ params }: { params: { slug: string } 
               }
               setSelectedItem(item);
             }}
-            onSheetOpen={() => {
+            onSheetOpen={(item) => {
               // Track item detail open
               if (restaurant) {
-                trackEvent(restaurant.id, selectedItem?.id || null, 'item_detail_open');
+                trackEvent(restaurant.id, item.id, 'item_detail_open');
                 sheetOpenTimeRef.current = Date.now();
               }
               setSheetOpen(true);
@@ -1415,7 +1415,7 @@ function CategoryWheel({
   items: MenuItem[];
   theme: ThemeConfig;
   onItemClick: (item: MenuItem) => void;
-  onSheetOpen: () => void;
+  onSheetOpen: (item: MenuItem) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -1557,8 +1557,9 @@ function CategoryWheel({
     }
     
     if (totalDrag < 5) {
-      onItemClick(items[activeIndexRef.current]);
-      onSheetOpen();
+      const clickedItem = items[activeIndexRef.current];
+      onItemClick(clickedItem);
+      onSheetOpen(clickedItem);
     }
   };
 
@@ -1651,6 +1652,17 @@ function DetailSheet({
   const [tappedAddon, setTappedAddon] = useState<string | null>(null);
 
   if (!item) return null;
+
+  // Handle escape key to close sheet
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && open) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open, onClose]);
 
   const kcal = Math.round(
     (item.protein || 0) * 4 + (item.carbs || 0) * 4 + (item.fats || 0) * 9
